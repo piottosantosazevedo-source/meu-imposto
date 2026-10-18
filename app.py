@@ -7,29 +7,43 @@ st.set_page_config(
     layout="centered"
 )
 
+# ESTILO DO SITE
 st.markdown("""
 <style>
 .stApp {
-    background: #F4F7F3;
+    background:
+        radial-gradient(ellipse at 8% 12%,
+            rgba(94, 163, 113, 0.22), transparent 28%),
+        radial-gradient(ellipse at 92% 35%,
+            rgba(125, 190, 140, 0.20), transparent 30%),
+        radial-gradient(ellipse at 15% 88%,
+            rgba(94, 163, 113, 0.18), transparent 28%),
+        #FFFFFF;
 }
+
 .block-container {
     max-width: 760px;
     padding-top: 2.5rem;
-    padding-bottom: 3rem;
+    padding-bottom: 2rem;
 }
+
 h1, h2, h3 {
     color: #204D3A !important;
 }
+
 .subtitle {
     color: #637568;
     font-size: 1.05rem;
+    text-align: center;
 }
+
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: white;
+    background: rgba(255, 255, 255, 0.94);
     border: 1px solid #E0E9E0;
     border-radius: 18px;
     padding: 20px;
 }
+
 div.stButton > button {
     background: #26734D;
     color: white;
@@ -39,24 +53,34 @@ div.stButton > button {
     font-weight: 600;
     width: 100%;
 }
+
 div.stButton > button:hover {
     background: #1D5A3B;
     color: white;
     border: none;
 }
+
 div[data-testid="stNumberInput"] input {
     border-radius: 9px;
 }
+
 .footer {
     color: #748277;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     text-align: center;
-    padding-top: 24px;
+    padding-top: 28px;
+    padding-bottom: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## 💚 Meu Imposto")
+
+# TÍTULO DO SITE
+st.markdown(
+    "<h1 style='text-align:center;'>💚 Meu Imposto</h1>",
+    unsafe_allow_html=True
+)
+
 st.markdown(
     '<p class="subtitle">Uma maneira simples de simular '
     'o seu imposto de renda.</p>',
@@ -66,32 +90,34 @@ st.markdown(
 st.divider()
 
 
+# CAIXA VERDE CENTRALIZADA
 st.markdown("""
 <div style="
     background-color: #204D3A;
-    padding: 22px 24px;
+    padding: 16px 24px;
     border-radius: 14px;
-    margin-bottom: 16px;
-    width: 100%;
+    margin: 0 auto 20px auto;
+    width: fit-content;
+    max-width: 100%;
     box-sizing: border-box;
+    text-align: center;
 ">
     <h3 style="
         color: white !important;
         margin: 0;
-        font-size: 24px;
+        font-size: 22px;
     ">Seus dados</h3>
     <p style="
         color: #DCEBE0;
         margin: 8px 0 0 0;
         font-size: 16px;
-        width: 100%;
     ">Preencha as informações abaixo.</p>
 </div>
 """, unsafe_allow_html=True)
 
 
+# CAMPOS DA CALCULADORA
 with st.container(border=True):
-
     salario = st.number_input(
         "Salário mensal (R$)",
         min_value=0.0,
@@ -129,8 +155,15 @@ with st.container(border=True):
         use_container_width=True
     )
 
+
+# CÁLCULO
 if calcular:
-    base = salario - inss - (dependentes * 189.59) - pensao
+    base = (
+        salario
+        - inss
+        - (dependentes * 189.59)
+        - pensao
+    )
 
     if base <= 2428.80:
         aliquota, parcela = 0, 0
@@ -144,51 +177,75 @@ if calcular:
         aliquota, parcela = 27.5, 908.73
 
     imposto_inicial = max(
-        0, base * (aliquota / 100) - parcela
+        0,
+        base * (aliquota / 100) - parcela
     )
 
     if salario <= 5000:
         redutor = imposto_inicial
     elif salario <= 7350:
         redutor = max(
-            0, 978.62 - (0.133145 * salario)
+            0,
+            978.62 - (0.133145 * salario)
         )
     else:
         redutor = 0
 
-    imposto_final = max(0, imposto_inicial - redutor)
+    imposto_final = max(
+        0,
+        imposto_inicial - redutor
+    )
+
+    # FORMATAÇÃO EM REAIS
+    def reais(valor):
+        texto = f"{valor:,.2f}"
+        texto = texto.replace(",", "X")
+        texto = texto.replace(".", ",")
+        texto = texto.replace("X", ".")
+        return f"R$ {texto}"
 
     st.markdown("### 📊 Resultado da simulação")
 
     with st.container(border=True):
         st.caption("Imposto final estimado")
+
         st.markdown(
             f"<h1 style='color:#26734D !important;'>"
-            f"R$ {imposto_final:,.2f}</h1>",
+            f"{reais(imposto_final)}</h1>",
             unsafe_allow_html=True
         )
+
         st.divider()
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric("Base de cálculo", f"R$ {base:,.2f}")
+            st.metric(
+                "Base de cálculo",
+                reais(base)
+            )
 
         with col2:
-            st.metric("Alíquota", f"{aliquota:.1f}%")
+            st.metric(
+                "Alíquota",
+                f"{aliquota:.1f}%".replace(".", ",")
+            )
 
         st.write(
             f"**Imposto antes do redutor:** "
-            f"R$ {imposto_inicial:,.2f}"
+            f"{reais(imposto_inicial)}"
         )
 
     st.warning(
-        "Esta é uma simulação baseada nas regras inseridas "
-        "no programa. Confira a legislação vigente antes "
-        "de utilizar o resultado como valor oficial."
+        "Esta é uma simulação de demonstração. "
+        "As faixas, deduções e regras de redução precisam "
+        "ser conferidas e atualizadas conforme a legislação "
+        "vigente. Não utilize o resultado como valor oficial."
     )
 
+
+# RODAPÉ
 st.markdown(
-    '<p class="footer">MEU IMPOSTO · Calculadora de simulação</p>',
+    '<p class="footer">Desenvolvido por Lorena Piotto 💚</p>',
     unsafe_allow_html=True
 )
