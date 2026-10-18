@@ -11,14 +11,21 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp {
-    background:
-        radial-gradient(ellipse at 8% 12%,
-            rgba(94, 163, 113, 0.22), transparent 28%),
-        radial-gradient(ellipse at 92% 35%,
-            rgba(125, 190, 140, 0.20), transparent 30%),
-        radial-gradient(ellipse at 15% 88%,
-            rgba(94, 163, 113, 0.18), transparent 28%),
-        #FFFFFF;
+    background-color: #FFFFFF;
+    background-image:
+        radial-gradient(ellipse 65px 42px at 8% 14%,
+            #6FA780 0%, #6FA780 65%, transparent 68%),
+        radial-gradient(ellipse 43px 58px at 91% 25%,
+            #3F8057 0%, #3F8057 65%, transparent 69%),
+        radial-gradient(ellipse 58px 34px at 13% 52%,
+            #5D986D 0%, #5D986D 65%, transparent 69%),
+        radial-gradient(ellipse 48px 38px at 94% 65%,
+            #6FA780 0%, #6FA780 65%, transparent 69%),
+        radial-gradient(ellipse 68px 42px at 7% 87%,
+            #3F8057 0%, #3F8057 65%, transparent 69%),
+        radial-gradient(ellipse 42px 55px at 88% 94%,
+            #5D986D 0%, #5D986D 65%, transparent 69%);
+    background-attachment: fixed;
 }
 
 .block-container {
@@ -38,7 +45,7 @@ h1, h2, h3 {
 }
 
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.96);
     border: 1px solid #E0E9E0;
     border-radius: 18px;
     padding: 20px;
@@ -65,7 +72,7 @@ div[data-testid="stNumberInput"] input {
 }
 
 .footer {
-    color: #748277;
+    color: #526B5B;
     font-size: 0.85rem;
     text-align: center;
     padding-top: 28px;
@@ -75,7 +82,7 @@ div[data-testid="stNumberInput"] input {
 """, unsafe_allow_html=True)
 
 
-# TÍTULO DO SITE
+# TÍTULO
 st.markdown(
     "<h1 style='text-align:center;'>💚 Meu Imposto</h1>",
     unsafe_allow_html=True
@@ -90,7 +97,7 @@ st.markdown(
 st.divider()
 
 
-# CAIXA VERDE CENTRALIZADA
+# CABEÇALHO VERDE
 st.markdown("""
 <div style="
     background-color: #204D3A;
@@ -99,7 +106,6 @@ st.markdown("""
     margin: 0 auto 20px auto;
     width: fit-content;
     max-width: 100%;
-    box-sizing: border-box;
     text-align: center;
 ">
     <h3 style="
@@ -121,31 +127,35 @@ with st.container(border=True):
     salario = st.number_input(
         "Salário mensal (R$)",
         min_value=0.0,
-        value=3000.0,
+        value=None,
         step=100.0,
+        placeholder="Digite seu salário bruto mensal (R$)",
         format="%.2f"
     )
 
     inss = st.number_input(
         "Contribuição ao INSS (R$)",
         min_value=0.0,
-        value=0.0,
+        value=None,
         step=50.0,
+        placeholder="Digite o valor que você contribui no INSS",
         format="%.2f"
     )
 
     dependentes = st.number_input(
         "Quantidade de dependentes",
         min_value=0,
-        value=0,
-        step=1
+        value=None,
+        step=1,
+        placeholder="Digite a quantidade de dependentes"
     )
 
     pensao = st.number_input(
         "Pensão alimentícia (R$)",
         min_value=0.0,
-        value=0.0,
+        value=None,
         step=50.0,
+        placeholder="Digite o valor da pensão alimentícia. Se você não tiver, digite 0",
         format="%.2f"
     )
 
@@ -156,92 +166,129 @@ with st.container(border=True):
     )
 
 
-# CÁLCULO
+
+# CÁLCULO DO IR MENSAL - REGRAS DE 2026
 if calcular:
-    base = (
-        salario
-        - inss
-        - (dependentes * 189.59)
-        - pensao
-    )
+    if (
+        salario is None
+        or inss is None
+        or dependentes is None
+        or pensao is None
+    ):
+        st.error(
+            "Preencha todos os campos. Se não tiver "
+            "dependentes ou pensão dedutível, digite 0."
+        )
 
-    if base <= 2428.80:
-        aliquota, parcela = 0, 0
-    elif base <= 2826.65:
-        aliquota, parcela = 7.5, 182.16
-    elif base <= 3751.05:
-        aliquota, parcela = 15, 394.16
-    elif base <= 4664.68:
-        aliquota, parcela = 22.5, 675.49
+    elif inss > salario or pensao > salario:
+        st.error(
+            "Confira os valores informados: os descontos "
+            "não podem ser maiores que o salário neste simulador."
+        )
+
     else:
-        aliquota, parcela = 27.5, 908.73
+        # Deduções legais
+        deducoes_legais = (
+            inss
+            + dependentes * 189.59
+            + pensao
+        )
 
-    imposto_inicial = max(
-        0,
-        base * (aliquota / 100) - parcela
-    )
+        # Desconto simplificado mensal de 2026
+        desconto_simplificado = 607.20
 
-    if salario <= 5000:
-        redutor = imposto_inicial
-    elif salario <= 7350:
-        redutor = max(
+        # Escolhe a opção de dedução mais vantajosa
+        deducao_aplicada = max(
+            deducoes_legais,
+            desconto_simplificado
+        )
+
+        base = max(0, salario - deducao_aplicada)
+
+        # Tabela progressiva mensal de 2026
+        if base <= 2428.80:
+            aliquota, parcela = 0, 0
+        elif base <= 2826.65:
+            aliquota, parcela = 7.5, 182.16
+        elif base <= 3751.05:
+            aliquota, parcela = 15, 394.16
+        elif base <= 4664.68:
+            aliquota, parcela = 22.5, 675.49
+        else:
+            aliquota, parcela = 27.5, 908.73
+
+        imposto_tabela = max(
             0,
-            978.62 - (0.133145 * salario)
-        )
-    else:
-        redutor = 0
-
-    imposto_final = max(
-        0,
-        imposto_inicial - redutor
-    )
-
-    # FORMATAÇÃO EM REAIS
-    def reais(valor):
-        texto = f"{valor:,.2f}"
-        texto = texto.replace(",", "X")
-        texto = texto.replace(".", ",")
-        texto = texto.replace("X", ".")
-        return f"R$ {texto}"
-
-    st.markdown("### 📊 Resultado da simulação")
-
-    with st.container(border=True):
-        st.caption("Imposto final estimado")
-
-        st.markdown(
-            f"<h1 style='color:#26734D !important;'>"
-            f"{reais(imposto_final)}</h1>",
-            unsafe_allow_html=True
+            base * (aliquota / 100) - parcela
         )
 
-        st.divider()
+        # Redução mensal de 2026
+        if salario <= 5000:
+            reducao = min(imposto_tabela, 312.89)
 
-        col1, col2 = st.columns(2)
+        elif salario <= 7350:
+            reducao = max(
+                0,
+                978.62 - (0.133145 * salario)
+            )
+            reducao = min(imposto_tabela, reducao)
 
-        with col1:
-            st.metric(
-                "Base de cálculo",
-                reais(base)
+        else:
+            reducao = 0
+
+        imposto_final = max(
+            0,
+            imposto_tabela - reducao
+        )
+
+        def reais(valor):
+            texto = f"{valor:,.2f}"
+            texto = texto.replace(",", "X")
+            texto = texto.replace(".", ",")
+            texto = texto.replace("X", ".")
+            return f"R$ {texto}"
+
+        st.markdown("### 📊 Resultado da simulação")
+
+        with st.container(border=True):
+            st.caption("Imposto final estimado")
+
+            st.markdown(
+                f"<h1 style='color:#26734D !important;'>"
+                f"{reais(imposto_final)}</h1>",
+                unsafe_allow_html=True
             )
 
-        with col2:
-            st.metric(
-                "Alíquota",
-                f"{aliquota:.1f}%".replace(".", ",")
+            st.divider()
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.metric("Base de cálculo", reais(base))
+
+            with col2:
+                st.metric(
+                    "Alíquota",
+                    f"{aliquota:.1f}%".replace(".", ",")
+                )
+
+            st.write(
+                f"**Dedução aplicada:** {reais(deducao_aplicada)}"
+            )
+            st.write(
+                f"**Imposto pela tabela:** {reais(imposto_tabela)}"
+            )
+            st.write(
+                f"**Redução aplicada:** {reais(reducao)}"
             )
 
-        st.write(
-            f"**Imposto antes do redutor:** "
-            f"{reais(imposto_inicial)}"
+        st.warning(
+            "Simulação mensal simplificada para 2026. "
+            "Considere apenas pensão legalmente dedutível. "
+            "O resultado pode variar conforme outros rendimentos, "
+            "deduções e circunstâncias individuais. Não substitui "
+            "o cálculo oficial da fonte pagadora ou orientação fiscal."
         )
-
-    st.warning(
-        "Esta é uma simulação de demonstração. "
-        "As faixas, deduções e regras de redução precisam "
-        "ser conferidas e atualizadas conforme a legislação "
-        "vigente. Não utilize o resultado como valor oficial."
-    )
 
 
 # RODAPÉ
